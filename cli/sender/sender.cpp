@@ -138,7 +138,7 @@ bool try_save_sender_db(const CLP &cmd, shared_ptr<SenderDB> sender_db, const OP
 
 int start_sender(const CLP &cmd)
 {
-    ThreadPoolMgr::SetThreadCount(cmd.threads());
+    ThreadPoolMgr::SetThreadCount(1);
     APSI_LOG_INFO("Setting thread count to " << ThreadPoolMgr::GetThreadCount());
     signal(SIGINT, sigint_handler);
 

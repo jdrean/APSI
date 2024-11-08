@@ -58,7 +58,7 @@ namespace apsi {
         class ThreadPool {
         public:
             explicit ThreadPool(
-                std::size_t threads = (std::max)(2u, std::thread::hardware_concurrency()));
+                std::size_t threads = 1u);
             template <class F, class... Args>
             auto enqueue(F &&f, Args &&... args) -> std::future<apsi_result_of_type>;
             void wait_until_empty();
@@ -112,8 +112,8 @@ namespace apsi {
         // the constructor just launches some amount of workers
         inline ThreadPool::ThreadPool(std::size_t threads) : pool_size(threads), in_flight(0)
         {
-            for (std::size_t i = 0; i != threads; ++i)
-                emplace_back_worker(i);
+            // for (std::size_t i = 0; i != threads; ++i)
+            //     emplace_back_worker(i);
         }
 
         // add new work item to the pool
@@ -122,32 +122,25 @@ namespace apsi {
         {
             using return_type = apsi_result_of_type;
 
-            auto task = std::make_shared<std::packaged_task<return_type()> >(
-                std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+            // Create a packaged task with the provided function and arguments
+            std::packaged_task<return_type()> task(
+                std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+            );
 
-            std::future<return_type> res = task->get_future();
+            // Get the future associated with the task
+            std::future<return_type> res = task.get_future();
 
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            if (tasks.size() >= max_queue_size) {
-                std::size_t new_queue_size = seal::util::mul_safe<std::size_t>(max_queue_size, 2);
-                APSI_LOG_WARNING(
-                    "Thread pool queue has reached maximum size. Increasing to " << new_queue_size
-                                                                                 << " tasks.");
-                set_queue_size_limit_no_lock(new_queue_size);
-
-                // wait for the queue to empty or be stopped
-                condition_producers.wait(
-                    lock, [this] { return tasks.size() < max_queue_size || stop; });
+            try {
+                // Execute the task immediately in the current thread
+                task();
+            }
+            catch (...) {
+                // If an exception occurs, set the exception on the future
+                task.reset();
+                throw;
             }
 
-            // don't allow enqueueing after stopping the pool
-            if (stop)
-                throw std::runtime_error("enqueue on stopped ThreadPool");
-
-            tasks.emplace([task]() { (*task)(); });
-            std::atomic_fetch_add_explicit(&in_flight, std::size_t(1), std::memory_order_relaxed);
-            condition_consumers.notify_one();
-
+            // Return the future containing the result
             return res;
         }
 
@@ -183,8 +176,8 @@ namespace apsi {
 
         inline void ThreadPool::set_pool_size(std::size_t limit)
         {
-            if (limit < 1)
-                limit = 1;
+            //if (limit < 1)
+            limit = 1;
 
             std::unique_lock<std::mutex> lock(this->queue_mutex);
 
@@ -195,8 +188,8 @@ namespace apsi {
             std::size_t const old_size = this->workers.size();
             if (pool_size > old_size) {
                 // create new worker threads
-                for (std::size_t i = old_size; i != pool_size; ++i)
-                    emplace_back_worker(i);
+                // for (std::size_t i = old_size; i != pool_size; ++i)
+                //     emplace_back_worker(i);
             } else if (pool_size < old_size)
                 // notify all worker threads to start downsizing
                 this->condition_consumers.notify_all();

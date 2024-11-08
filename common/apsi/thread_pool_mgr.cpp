@@ -25,21 +25,12 @@ namespace {
 
     size_t thread_count(optional<size_t> threads = nullopt)
     {
-        static size_t thread_count = thread::hardware_concurrency();
-        if (threads) {
-            thread_count = threads.value() != 0 ? threads.value() : thread::hardware_concurrency();
-        }
-        return thread_count;
+        return 1;
     }
 
     size_t phys_thread_count(optional<size_t> threads = nullopt)
     {
-        static size_t phys_thread_count = thread::hardware_concurrency();
-        if (threads) {
-            phys_thread_count =
-                threads.value() != 0 ? threads.value() : thread::hardware_concurrency();
-        }
-        return phys_thread_count;
+        return 1;
     }
 } // namespace
 

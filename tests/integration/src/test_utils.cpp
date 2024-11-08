@@ -11,7 +11,7 @@
 #include <stdexcept>
 
 // Google Test
-#include "gtest/gtest.h"
+//#include "gtest/gtest.h"
 
 using namespace std;
 using namespace apsi;
@@ -112,15 +112,15 @@ namespace APSITests {
             });
 
         // Check that intersection size is correct
-        ASSERT_EQ(int_items.size(), match_count);
+        assert(int_items.size() == match_count);
 
         // Check that every intersection item was actually found
         for (auto &item : int_items) {
             auto where = find(query_vec.begin(), query_vec.end(), item);
-            ASSERT_NE(query_vec.end(), where);
+            assert(query_vec.end() != where);
 
             size_t idx = static_cast<size_t>(distance(query_vec.begin(), where));
-            ASSERT_TRUE(query_result[idx].found);
+            assert(query_result[idx].found);
         }
     }
 
@@ -135,7 +135,7 @@ namespace APSITests {
         // Verify that all labels were received for items that were found
         for (auto &result : query_result) {
             if (result.found) {
-                ASSERT_TRUE(result.label);
+                assert(result.label);
             }
         }
 
@@ -148,12 +148,12 @@ namespace APSITests {
                 find_if(all_item_labels.begin(), all_item_labels.end(), [&item](auto &item_label) {
                     return item == item_label.first;
                 });
-            ASSERT_NE(all_item_labels.end(), reference_label);
+            assert(all_item_labels.end() != reference_label);
 
             size_t label_byte_count = reference_label->second.size();
-            ASSERT_EQ(label_byte_count, query_result[idx].label.get_as<unsigned char>().size());
+            assert(label_byte_count == query_result[idx].label.get_as<unsigned char>().size());
 
-            ASSERT_TRUE(equal(
+            assert(equal(
                 reference_label->second.begin(),
                 reference_label->second.end(),
                 query_result[idx].label.get_as<unsigned char>().begin()));

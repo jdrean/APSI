@@ -21,7 +21,7 @@
 #include "apsi/receiver.h"
 
 // Google Test
-#include "gtest/gtest.h"
+//#include "gtest/gtest.h"
 
 namespace APSITests {
     apsi::Label create_label(unsigned char start, std::size_t byte_count);
