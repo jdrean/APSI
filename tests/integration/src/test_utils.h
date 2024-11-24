@@ -71,6 +71,11 @@ struct CycleAccumulator {
     uint64_t run_query_cycles = 0;
     uint64_t receive_query_response_cycles = 0;
     uint64_t process_result_cycles = 0;
+    uint64_t hash_oprf_request_cycles = 0;
+    uint64_t hash_oprf_response_cycles = 0;
+    uint64_t hash_received_query_cycles = 0;
+    uint64_t hash_query_response_cycles = 0;
+    uint64_t hash_final_result_cycles = 0;
 
     // Number of runs to calculate average
     size_t run_count = 0;
@@ -91,6 +96,11 @@ struct CycleAccumulator {
         receive_query_response_cycles += other.receive_query_response_cycles;
         process_result_cycles += other.process_result_cycles;
         run_count += other.run_count;
+        hash_oprf_request_cycles += other.hash_oprf_request_cycles;
+        hash_oprf_response_cycles += other.hash_oprf_response_cycles;
+        hash_received_query_cycles += other.hash_received_query_cycles;
+        hash_query_response_cycles += other.hash_query_response_cycles;
+        hash_final_result_cycles += other.hash_final_result_cycles;
     }
 
     // Method to print average cycles
@@ -126,5 +136,15 @@ struct CycleAccumulator {
                   << (receive_query_response_cycles / run_count) << " cycles" << std::endl;
         std::cout << "[AVERAGE CYCLES] Process Result Parts\t\t" 
                   << (process_result_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash OPRF Request\t\t" 
+                  << (hash_oprf_request_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash OPRF Response\t\t" 
+                  << (hash_oprf_response_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash Received Query\t\t" 
+                  << (hash_received_query_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash Query Response\t\t" 
+                  << (hash_query_response_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash Final Result\t\t" 
+                  << (hash_final_result_cycles / run_count) << " cycles" << std::endl;
     }
 };

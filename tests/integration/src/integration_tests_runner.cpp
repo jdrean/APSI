@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <chrono>
 
 // APSI
 #include "apsi/log.h"
@@ -17,8 +18,10 @@
 #include "test_utils.h"
 
 #include <x86intrin.h>
+#include <SHA256.h>
 
 using namespace std;
+using namespace std::chrono;
 using namespace apsi;
 using namespace apsi::receiver;
 using namespace apsi::sender;
@@ -27,10 +30,44 @@ using namespace apsi::util;
 using namespace apsi::oprf;
 using namespace seal;
 
-unsigned int aux;
-uint64_t time_start;
-uint64_t time_end;
+class Timer {
+public:
+    Timer() {
+        print_timestamp("Program started at: ");
+    }
+    
+    ~Timer() {
+        print_timestamp("Program ended at: ");
+    }
 
+private:
+    static void print_timestamp(const char* prefix) {
+        using namespace std::chrono;
+        auto now = high_resolution_clock::now();
+        auto duration = now.time_since_epoch();
+        
+        // Get seconds
+        auto secs = duration_cast<std::chrono::seconds>(duration);
+        
+        // Get just the nanoseconds part by taking remainder after seconds
+        auto nsecs = duration_cast<std::chrono::nanoseconds>(duration - secs).count() % 1000000000;
+        
+        // Print with exact same format as date +%s.%N
+        std::cout << prefix 
+                 << secs.count() << "."
+                 << std::setfill('0') << std::setw(9) << nsecs
+                 << std::endl;
+    }
+};
+
+// Global timer instance
+static Timer global_timer;
+
+unsigned int aux;
+uint64_t cycle_start;
+uint64_t cycle_end;
+
+uint8_t hash_input[1024*1024];
 namespace APSITests {
     namespace {
         // Global Cycle Accumulator
@@ -43,6 +80,8 @@ namespace APSITests {
             size_t num_threads,
             bool use_different_compression = false)
         {
+            SHA256 sha;
+
             Log::SetConsoleDisabled(true);
             // Log::SetLogLevel(Log::Level::info);
 
@@ -89,67 +128,78 @@ namespace APSITests {
 
                 // Instrument: OPRF Receiver Creation
                 unsigned int aux;
-                unsigned long long time_start, time_end;
+                unsigned long long cycle_start, cycle_end;
 
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 oprf::OPRFReceiver oprf_receiver = Receiver::CreateOPRFReceiver(recv_items);
-                time_end = __rdtscp(&aux);
-                local_accumulator.oprf_receiver_creation_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.oprf_receiver_creation_cycles += (cycle_end - cycle_start);
 
                 // Instrument: OPRF Request Creation
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 Request oprf_request = Receiver::CreateOPRFRequest(oprf_receiver);
-                time_end = __rdtscp(&aux);
-                local_accumulator.oprf_request_creation_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.oprf_request_creation_cycles += (cycle_end - cycle_start);
 
                 // Instrument: Send OPRF Request
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 chl.send(move(oprf_request));
-                time_end = __rdtscp(&aux);
+                cycle_end = __rdtscp(&aux);
                 size_t bytes_sent = chl.bytes_sent();
-                local_accumulator.send_oprf_request_cycles += (time_end - time_start);
+                local_accumulator.send_oprf_request_cycles += (cycle_end - cycle_start);
 
                 cout << "New run" << endl;
 
                 // Instrument: Receive OPRF Request
                 size_t bytes_received_old = chl.bytes_received();
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 OPRFRequest oprf_request2 =
                     to_oprf_request(chl.receive_operation(nullptr, SenderOperationType::sop_oprf));
-                time_end = __rdtscp(&aux);
-                local_accumulator.receive_oprf_request_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.receive_oprf_request_cycles += (cycle_end - cycle_start);
+
                 size_t bytes_received = chl.bytes_received();
                 cout << "Bytes received: " << bytes_received - bytes_received_old << endl;
                 bytes_received_old = bytes_received;
 
+                cycle_start = __rdtscp(&aux);
+                sha.update(hash_input, bytes_received - bytes_received_old);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.hash_oprf_request_cycles += (cycle_end - cycle_start);
+
                 // Instrument: Run OPRF
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 Sender::RunOPRF(oprf_request2, oprf_key, chl);
-                time_end = __rdtscp(&aux);
-                local_accumulator.run_oprf_cycles += (time_end - time_start); // Including RunOPRF
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.run_oprf_cycles += (cycle_end - cycle_start); // Including RunOPRF
 
                 // Instrument: Receive OPRF Response
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 OPRFResponse oprf_response = to_oprf_response(chl.receive_response());
-                time_end = __rdtscp(&aux);
-                local_accumulator.receive_oprf_response_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.receive_oprf_response_cycles += (cycle_end - cycle_start);
 
                 bytes_received = chl.bytes_received();
                 cout << "Bytes received: " << bytes_received - bytes_received_old << endl;
                 bytes_received_old = bytes_received;
 
+                cycle_start = __rdtscp(&aux);
+                sha.update(hash_input, bytes_received - bytes_received_old);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.hash_oprf_response_cycles += (cycle_end - cycle_start);
+
                 // Instrument: Extract Hashes
                 vector<HashedItem> hashed_recv_items;
                 vector<LabelKey> label_keys;
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 tie(hashed_recv_items, label_keys) =
                     Receiver::ExtractHashes(oprf_response, oprf_receiver);
-                time_end = __rdtscp(&aux);
-                local_accumulator.extract_hashes_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.extract_hashes_cycles += (cycle_end - cycle_start);
                 assert(hashed_recv_items.size() == recv_items.size());
 
                 // Instrument: Create Query
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 pair<Request, IndexTranslationTable> recv_query_pair =
                     receiver.create_query(hashed_recv_items);
                 QueryRequest recv_query = to_query_request(move(recv_query_pair.first));
@@ -168,57 +218,72 @@ namespace APSITests {
                 }
 
                 IndexTranslationTable itt = move(recv_query_pair.second);
-                time_end = __rdtscp(&aux);
-                local_accumulator.create_query_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.create_query_cycles += (cycle_end - cycle_start);
 
                 // Instrument: Send Query
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 chl.send(move(recv_query));
-                time_end = __rdtscp(&aux);
-                local_accumulator.send_query_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.send_query_cycles += (cycle_end - cycle_start);
 
                 // Instrument: Receive Query
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 QueryRequest sender_query = to_query_request(chl.receive_operation(seal_context));
                 Query query(move(sender_query), sender_db);
-                time_end = __rdtscp(&aux);
-                local_accumulator.receive_query_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.receive_query_cycles += (cycle_end - cycle_start);
                 assert(expected_compr_mode == query.compr_mode());
 
                 bytes_received = chl.bytes_received();
                 cout << "Bytes received: " << bytes_received - bytes_received_old << endl;
                 bytes_received_old = bytes_received;
 
+                cycle_start = __rdtscp(&aux);
+                sha.update(hash_input, bytes_received - bytes_received_old);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.hash_received_query_cycles += (cycle_end - cycle_start);
+
                 // Instrument: Run Query
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 Sender::RunQuery(query, chl);
-                time_end = __rdtscp(&aux);
-                local_accumulator.run_query_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.run_query_cycles += (cycle_end - cycle_start);
 
                 // Instrument: Receive Query Response
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 QueryResponse query_response = to_query_response(chl.receive_response());
-                time_end = __rdtscp(&aux);
-                local_accumulator.receive_query_response_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.receive_query_response_cycles += (cycle_end - cycle_start);
                 uint32_t package_count = query_response->package_count;
 
                 bytes_received = chl.bytes_received();
                 cout << "Bytes received: " << bytes_received - bytes_received_old << endl;
                 bytes_received_old = bytes_received;
 
+                cycle_start = __rdtscp(&aux);
+                sha.update(hash_input, bytes_received - bytes_received_old);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.hash_query_response_cycles += (cycle_end - cycle_start);
+
                 // Instrument: Process Result Parts
                 vector<ResultPart> rps;
-                time_start = __rdtscp(&aux);
+                cycle_start = __rdtscp(&aux);
                 while (package_count--) {
                     rps.push_back(chl.receive_result(receiver.get_seal_context()));
                 }
                 auto query_result = receiver.process_result(label_keys, itt, rps);
-                time_end = __rdtscp(&aux);
-                local_accumulator.process_result_cycles += (time_end - time_start);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.process_result_cycles += (cycle_end - cycle_start);
 
                 bytes_received = chl.bytes_received();
                 cout << "Bytes received: " << bytes_received - bytes_received_old << endl;
                 bytes_received_old = bytes_received;
+
+                cycle_start = __rdtscp(&aux);
+                sha.update(hash_input, bytes_received - bytes_received_old);
+                cycle_end = __rdtscp(&aux);
+                local_accumulator.hash_final_result_cycles += (cycle_end - cycle_start);
 
                 // Verify results
                 verify_unlabeled_results(query_result, recv_items, recv_int_items);
@@ -233,7 +298,7 @@ namespace APSITests {
             global_accumulator.accumulate(local_accumulator);
 
             // After all runs, print the average times
-            local_accumulator.print_average();
+            //local_accumulator.print_average();
             cout << endl;
         }
 
@@ -334,35 +399,26 @@ namespace APSITests {
 void print_time(string func_name, unsigned long long elapsed_time) {
 	cout << "[CYCLES] " << func_name << "\t" << setprecision(6) << right
 	    << setw(10) << elapsed_time << " cycles" << endl;
-	cout << "[TIME] " << func_name << "\t" << setprecision(6) << right
-	    << setw(10) << elapsed_time / float(3600) << " us" << endl;
 }
 
 size_t NUM_REPEATS = 1;
 
 int main(int argc, char **argv)
 {
+    cout << "Starting APSI tests" << endl;
+
     unsigned long long elapsed_time = 0;
     PSIParams params = APSITests::create_params1();
     for (size_t i = 0; i < NUM_REPEATS; i++) {
-        size_t sender_size = 4000;
-        time_start = __rdtscp(&aux);
+        size_t sender_size = 1000000;
+        cycle_start = __rdtscp(&aux);
         APSITests::RunUnlabeledTest(
             sender_size,
-            { { 0, 0 },
-              { 1, 0 },
-              { 500, 10 },
-              { 500, 50 },
-              { 500, 500 },
-              { 1000, 0 },
-              { 1000, 1 },
-              { 1000, 500 },
-              { 1000, 999 },
-              { 1000, 1000 } },
+            { { 1, 1 } },
             params,
             1);
-        time_end = __rdtscp(&aux);
-        elapsed_time += time_end - time_start;
+        cycle_end = __rdtscp(&aux);
+        elapsed_time += cycle_end - cycle_start;
     }
     elapsed_time /= NUM_REPEATS;
     print_time("RunUnlabeledTest", elapsed_time);
