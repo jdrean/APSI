@@ -110,41 +110,41 @@ struct CycleAccumulator {
             return;
         }
 
-        std::cout << "[AVERAGE CYCLES] OPRF Receiver Creation\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client OPRF Receiver Creation\t\t" 
                   << (oprf_receiver_creation_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] OPRF Request Creation\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client OPRF Request Creation\t\t" 
                   << (oprf_request_creation_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Send OPRF Request\t\t\t" 
-                  << (send_oprf_request_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Receive OPRF Request\t\t" 
-                  << (receive_oprf_request_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Run OPRF\t\t\t\t" 
-                  << (run_oprf_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Receive OPRF Response\t\t" 
-                  << (receive_oprf_response_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Extract Hashes\t\t\t" 
-                  << (extract_hashes_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Create Query\t\t\t" 
-                  << (create_query_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Send Query\t\t\t" 
-                  << (send_query_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Receive Query\t\t\t" 
-                  << (receive_query_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Run Query\t\t\t\t" 
-                  << (run_query_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Receive Query Response\t\t" 
-                  << (receive_query_response_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Process Result Parts\t\t" 
-                  << (process_result_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Hash OPRF Request\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client Hash OPRF Request\t\t" 
                   << (hash_oprf_request_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Hash OPRF Response\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client Send OPRF Request\t\t" 
+                  << (send_oprf_request_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Receive OPRF Request\t\t" 
+                  << (receive_oprf_request_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Run OPRF\t\t\t" 
+                  << (run_oprf_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Hash OPRF Response\t\t" 
                   << (hash_oprf_response_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Hash Received Query\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client Receive OPRF Response\t\t" 
+                  << (receive_oprf_response_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Client Extract Hashes\t\t\t" 
+                  << (extract_hashes_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Client Create Query\t\t\t" 
+                  << (create_query_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Client Hash Query\t\t\t" 
                   << (hash_received_query_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Hash Query Response\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client Send Query\t\t\t" 
+                  << (send_query_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Receive Query\t\t\t" 
+                  << (receive_query_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Run Query\t\t\t" 
+                  << (run_query_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Server Hash Query Response\t\t" 
                   << (hash_query_response_cycles / run_count) << " cycles" << std::endl;
-        std::cout << "[AVERAGE CYCLES] Hash Final Result\t\t" 
+        std::cout << "[AVERAGE CYCLES] Client Receive Query Response\t\t" 
+                  << (receive_query_response_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Client Process Result Parts\t\t" 
+                  << (process_result_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE CYCLES] Hash Final Result\t\t\t" 
                   << (hash_final_result_cycles / run_count) << " cycles" << std::endl;
     }
 };
