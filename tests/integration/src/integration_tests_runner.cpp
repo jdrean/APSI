@@ -63,6 +63,8 @@ private:
 // Global timer instance
 static Timer global_timer;
 
+void *__dso_handle = (void *) &__dso_handle;
+
 unsigned int aux;
 uint64_t cycle_start;
 uint64_t cycle_end;

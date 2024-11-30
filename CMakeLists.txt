@@ -31,6 +31,10 @@ project(APSI VERSION 0.12.0 LANGUAGES CXX C)
 # This policy was introduced in CMake 3.13; OLD by default until CMake 3.21
 cmake_policy(SET CMP0077 NEW)
 
+get_filename_component(CUR_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,${CUR_DIR}/eh_frame_symbols.ld")
+
 ########################
 # Global configuration #
 ########################
@@ -164,11 +168,10 @@ set(APSI_USE_LOG4CPLUS_OPTION_STR "Use Log4cplus for logging")
 option(APSI_USE_LOG4CPLUS ${APSI_USE_LOG4CPLUS_OPTION_STR} ON)
 if(APSI_USE_LOG4CPLUS)
     # Log4cplus
-    find_package(log4cplus REQUIRED)
-    if(NOT log4cplus_FOUND)
-        message(FATAL_ERROR "log4cplus: not found")
-    else()
-        message(STATUS "log4cplus: found")
+    set(LOG4CPLUS_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
+    set(LOG4CPLUS_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/liblog4cplus.a")
+    if(NOT EXISTS "${LOG4CPLUS_LIBRARIES}")
+        message(FATAL_ERROR "log4cplus library not found at ${LOG4CPLUS_LIBRARIES}")
     endif()
 endif()
 
@@ -195,15 +198,6 @@ endif()
 # [Option] APSI_BUILD_TESTS (default: OFF)
 set(APSI_BUILD_TESTS_OPTION_STR "Build unit and integration tests for APSI")
 option(APSI_BUILD_TESTS ${APSI_BUILD_TESTS_OPTION_STR} OFF)
-if(APSI_BUILD_TESTS)
-    # Google Test
-    find_package(GTest CONFIG REQUIRED)
-    if(NOT GTest_FOUND)
-        message(FATAL_ERROR "GTest: not found")
-    else()
-        message(STATUS "GTest: found")
-    endif()
-endif()
 
 # [Option] APSI_BUILD_CLI (default: OFF)
 set(APSI_BUILD_CLI_OPTION_STR "Build example command line interface applications")
@@ -265,13 +259,8 @@ target_link_libraries(apsi
     PUBLIC SEAL::seal
     PUBLIC Kuku::kuku
     PUBLIC flatbuffers::flatbuffers
-    PUBLIC jsoncpp_static)
-if(APSI_USE_LOG4CPLUS)
-    target_link_libraries(apsi PUBLIC log4cplus::log4cplus)
-endif()
-if(APSI_USE_ZMQ)
-    target_link_libraries(apsi PUBLIC libzmq-static cppzmq-static)
-endif()
+    PUBLIC jsoncpp_static
+    c++ c++abi clang_rt.builtins-x86_64 m pthread dl util rt c)
 
 # Configurations for FourQlib: system, arch, SIMD, and assembler
 target_compile_options(apsi PUBLIC -DHAVE_CONFIG)
@@ -388,16 +377,6 @@ export(
     NAMESPACE APSI::
     FILE ${APSI_TARGETS_FILENAME})
 
-###################
-# APSI unit tests #
-###################
-
-if(APSI_BUILD_TESTS)
-    add_executable(unit_tests)
-    add_subdirectory(tests/unit/src)
-    target_link_libraries(unit_tests apsi GTest::gtest)
-endif()
-
 ##########################
 # APSI integration tests #
 ##########################
@@ -405,7 +384,7 @@ endif()
 if(APSI_BUILD_TESTS)
     add_executable(integration_tests)
     add_subdirectory(tests/integration/src)
-    target_link_libraries(integration_tests apsi GTest::gtest)
+    target_link_libraries(integration_tests apsi SEAL::seal jsoncpp_static c++ c++abi clang_rt.builtins-x86_64 m pthread dl util rt c)
 endif()
 
 ##########################
