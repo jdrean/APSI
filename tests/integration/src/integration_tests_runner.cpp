@@ -83,6 +83,9 @@ namespace APSITests {
         {
             SHA256 sha;
 
+            unsigned int aux;
+            unsigned long long cycle_start, cycle_end;
+
             Log::SetConsoleDisabled(true);
             // Log::SetLogLevel(Log::Level::info);
 
@@ -94,10 +97,34 @@ namespace APSITests {
                 sender_items.push_back({ i + 1, i + 1 });
             }
 
+            // Hash and count bytes of sender_items
+            size_t total_bytes = sender_items.size() * sizeof(Item);
+            string sender_items_bytes;
+            sender_items_bytes.reserve(total_bytes);
+            for (const auto& item : sender_items) {
+                sender_items_bytes.append(reinterpret_cast<const char*>(&item), sizeof(Item));
+            }
+            cycle_start = __rdtscp(&aux);
+            sha.update(sender_items_bytes);
+            auto digest = sha.digest();
+            string hash = SHA256::toString(digest);
+            cycle_end = __rdtscp(&aux);
+            cout << "[INFO] Sender items total bytes: " << total_bytes << endl;
+            cout << "[INFO] Hash size: " << digest.size() << " bytes" << endl;
+            //cout << "[INFO] Hash (hex): " << hash << endl;
+            cout << "[CYCLES] Hash sender items\t\t\t" 
+                 << (cycle_end - cycle_start) << " cycles" << endl;
+
             // Initialize SenderDB and OPRF key
+            cycle_start = __rdtscp(&aux);
             auto sender_db = make_shared<SenderDB>(params, 0);
             auto oprf_key = sender_db->get_oprf_key();
             sender_db->set_data(sender_items);
+            cycle_end = __rdtscp(&aux);
+            auto server_init_cycles = (cycle_end - cycle_start);
+
+            cout << "[CYCLES] Server Init\t\t\t" 
+                 << server_init_cycles << " cycles" << endl;
 
             // Initialize SEAL context
             auto seal_context = sender_db->get_seal_context();
@@ -117,6 +144,9 @@ namespace APSITests {
                 auto int_size = client_total_and_int_size.second;
                 assert(int_size <= client_size);
 
+                cout << "Client size: " << client_size << endl;
+                cout << "Int size: " << int_size << endl;
+
                 // Prepare receiving items
                 vector<Item> recv_int_items = rand_subset(sender_items, int_size);
                 vector<Item> recv_items;
@@ -128,9 +158,6 @@ namespace APSITests {
                 }
 
                 // Instrument: OPRF Receiver Creation
-                unsigned int aux;
-                unsigned long long cycle_start, cycle_end;
-
                 cycle_start = __rdtscp(&aux);
                 oprf::OPRFReceiver oprf_receiver = Receiver::CreateOPRFReceiver(recv_items);
                 cycle_end = __rdtscp(&aux);
@@ -150,14 +177,13 @@ namespace APSITests {
                 local_accumulator.send_oprf_request_cycles += (cycle_end - cycle_start);
 
                 size_t bytes_sent = chl.bytes_sent();
-                cout << "Bytes sent: " << bytes_sent - bytes_sent_old << endl;
-                cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
+                cout << "OPRF Request Bytes sent: " << bytes_sent - bytes_sent_old << endl;
+                // cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
                 cycle_start = __rdtscp(&aux);
                 sha.update(ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old));
                 cycle_end = __rdtscp(&aux);
                 local_accumulator.hash_oprf_request_cycles += (cycle_end - cycle_start);
-                bytes_sent_old = bytes_sent; 
-               
+                bytes_sent_old = bytes_sent;
 
                 cout << "New run" << endl;
 
@@ -175,8 +201,8 @@ namespace APSITests {
                 local_accumulator.run_oprf_cycles += (cycle_end - cycle_start); // Including RunOPRF
 
                 bytes_sent = chl.bytes_sent();
-                cout << "Bytes sent: " << bytes_sent - bytes_sent_old << endl;
-                cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
+                cout << "OPRF Response Bytes sent: " << bytes_sent - bytes_sent_old << endl;
+                // cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
                 cycle_start = __rdtscp(&aux);
                 sha.update(ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old));
                 cycle_end = __rdtscp(&aux);
@@ -229,8 +255,8 @@ namespace APSITests {
                 local_accumulator.send_query_cycles += (cycle_end - cycle_start);
 
                 bytes_sent = chl.bytes_sent();
-                cout << "Bytes sent: " << bytes_sent - bytes_sent_old << endl;
-                cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
+                cout << "PSI Query Bytes sent: " << bytes_sent - bytes_sent_old << endl;
+                // cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
                 cycle_start = __rdtscp(&aux);
                 sha.update(ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old));
                 cycle_end = __rdtscp(&aux);
@@ -252,8 +278,8 @@ namespace APSITests {
                 local_accumulator.run_query_cycles += (cycle_end - cycle_start);
 
                 bytes_sent = chl.bytes_sent();
-                cout << "Bytes sent: " << bytes_sent - bytes_sent_old << endl;
-                cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
+                cout << "PSI Response Bytes sent: " << bytes_sent - bytes_sent_old << endl;
+                // cout << "SS String len: " << ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old).length() << endl;
                 cycle_start = __rdtscp(&aux);
                 sha.update(ss.str().substr(bytes_sent_old, bytes_sent - bytes_sent_old));
                 cycle_end = __rdtscp(&aux);
