@@ -112,6 +112,8 @@ namespace APSITests {
             //cout << "[INFO] Hash (hex): " << hash << endl;
             cout << "[CYCLES] Hash sender items\t\t\t" 
                  << (cycle_end - cycle_start) << " cycles" << endl;
+            cout << "[TIME] Hash sender items\t\t\t" 
+                 << int((cycle_end - cycle_start) / 3600) << " us" << endl;
 
             // Initialize SenderDB and OPRF key
             cycle_start = __rdtscp(&aux);
@@ -123,6 +125,8 @@ namespace APSITests {
 
             cout << "[CYCLES] Server Init\t\t\t" 
                  << server_init_cycles << " cycles" << endl;
+            cout << "[TIME] Server Init\t\t\t" 
+                 << int(server_init_cycles / 3600) << " us" << endl;
 
             // Initialize SEAL context
             auto seal_context = sender_db->get_seal_context();

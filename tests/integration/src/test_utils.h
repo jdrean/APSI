@@ -142,5 +142,9 @@ struct CycleAccumulator {
                   << (receive_query_response_cycles / run_count) << " cycles" << std::endl;
         std::cout << "[AVERAGE CYCLES] Client Process Result Parts\t\t" 
                   << (process_result_cycles / run_count) << " cycles" << std::endl;
+        std::cout << "[AVERAGE TIME] Server processing\t\t" 
+                  << int(((receive_oprf_request_cycles +  run_oprf_cycles + receive_query_cycles + run_query_cycles)/ run_count) / 3600) << " us" << std::endl;
+        std::cout << "[AVERAGE TIME] Server hashing\t\t" 
+                  << int(((hash_oprf_request_cycles + hash_oprf_response_cycles + hash_received_query_cycles + hash_query_response_cycles)/ run_count) / 3600) << " us" << std::endl;
     }
 };

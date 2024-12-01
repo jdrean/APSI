@@ -195,15 +195,6 @@ endif()
 # [Option] APSI_BUILD_TESTS (default: OFF)
 set(APSI_BUILD_TESTS_OPTION_STR "Build unit and integration tests for APSI")
 option(APSI_BUILD_TESTS ${APSI_BUILD_TESTS_OPTION_STR} OFF)
-if(APSI_BUILD_TESTS)
-    # Google Test
-    find_package(GTest CONFIG REQUIRED)
-    if(NOT GTest_FOUND)
-        message(FATAL_ERROR "GTest: not found")
-    else()
-        message(STATUS "GTest: found")
-    endif()
-endif()
 
 # [Option] APSI_BUILD_CLI (default: OFF)
 set(APSI_BUILD_CLI_OPTION_STR "Build example command line interface applications")
@@ -388,16 +379,6 @@ export(
     NAMESPACE APSI::
     FILE ${APSI_TARGETS_FILENAME})
 
-###################
-# APSI unit tests #
-###################
-
-if(APSI_BUILD_TESTS)
-    add_executable(unit_tests)
-    add_subdirectory(tests/unit/src)
-    target_link_libraries(unit_tests apsi GTest::gtest)
-endif()
-
 ##########################
 # APSI integration tests #
 ##########################
@@ -405,7 +386,7 @@ endif()
 if(APSI_BUILD_TESTS)
     add_executable(integration_tests)
     add_subdirectory(tests/integration/src)
-    target_link_libraries(integration_tests apsi GTest::gtest)
+    target_link_libraries(integration_tests apsi)
 endif()
 
 ##########################
